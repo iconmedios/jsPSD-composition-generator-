@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useRef } from 'react';
 import { Toolbar } from './components/Toolbar';
 import { Canvas } from './components/Canvas';
 import { PropertiesPanel } from './components/PropertiesPanel';
@@ -21,6 +21,10 @@ const App: React.FC = () => {
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isCodeModalOpen, setCodeModalOpen] = useState(false);
   const [documentTitle, setDocumentTitle] = useState<string>('Mi Documento PDF');
+  const [zoom, setZoom] = useState<number>(1);
+
+  const mainRef = useRef<HTMLElement>(null);
+  const panStart = useRef<{x: number, y: number, scrollLeft: number, scrollTop: number} | null>(null);
 
   const selectedElement = useMemo(
     () => elements.find((el) => el.id === selectedElementId) || null,
@@ -29,12 +33,10 @@ const App: React.FC = () => {
 
   const updateElement = useCallback((id: string, updates: Partial<PdfElement>) => {
     setElements((prevElements) =>
-      prevElements.map((el) => (el.id === id ? { ...el, ...updates } : el))
+      prevElements.map((el) => (el.id === id ? { ...el, ...updates } as PdfElement : el))
     );
   }, []);
 
-  // FIX: Refactored element creation to use a switch statement for better type safety.
-  // This resolves a TypeScript error with conditional spreading in a single object literal.
   const addElement = (type: ElementType) => {
     let newElement: PdfElement;
     
@@ -85,7 +87,6 @@ const App: React.FC = () => {
         };
         break;
       default:
-        // Esto causará un error en tiempo de compilación si falta un caso.
         const _exhaustiveCheck: never = type;
         throw new Error(`Tipo de elemento no manejado: ${_exhaustiveCheck}`);
     }
@@ -104,7 +105,6 @@ const App: React.FC = () => {
 
   const handleDownloadPdf = () => {
     const code = generateJsPdfCode(pageSettings, elements, false);
-    // Usamos new Function para evitar el uso directo de eval, es un poco más seguro.
     try {
       const generate = new Function('jsPDF', code);
       generate(jsPDF);
@@ -121,6 +121,41 @@ const App: React.FC = () => {
     return '';
   }, [isCodeModalOpen, pageSettings, elements]);
 
+  const handleZoomIn = () => setZoom(prev => Math.min(prev + 0.1, 3));
+  const handleZoomOut = () => setZoom(prev => Math.max(prev - 0.1, 0.1));
+  const handleZoomReset = () => setZoom(1);
+
+  const handleMouseDownForPan = (e: React.MouseEvent) => {
+    if (e.button !== 0 || !mainRef.current || (e.target as HTMLElement).closest('.canvas-bg')) {
+      return;
+    }
+    panStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      scrollLeft: mainRef.current.scrollLeft,
+      scrollTop: mainRef.current.scrollTop,
+    };
+    mainRef.current.style.cursor = 'grabbing';
+    document.addEventListener('mousemove', handleMouseMoveForPan);
+    document.addEventListener('mouseup', handleMouseUpForPan, { once: true });
+  };
+
+  const handleMouseMoveForPan = useCallback((e: MouseEvent) => {
+    if (!panStart.current || !mainRef.current) return;
+    const dx = e.clientX - panStart.current.x;
+    const dy = e.clientY - panStart.current.y;
+    mainRef.current.scrollLeft = panStart.current.scrollLeft - dx;
+    mainRef.current.scrollTop = panStart.current.scrollTop - dy;
+  }, []);
+
+  const handleMouseUpForPan = useCallback(() => {
+    if (mainRef.current) {
+      mainRef.current.style.cursor = 'grab';
+    }
+    panStart.current = null;
+    document.removeEventListener('mousemove', handleMouseMoveForPan);
+  }, []);
+
   return (
     <div className="flex h-screen font-sans text-sm">
       <Toolbar 
@@ -130,22 +165,56 @@ const App: React.FC = () => {
         onGenerateCode={handleGenerateCode}
         onDownloadPdf={handleDownloadPdf}
       />
-      <main className="flex-1 flex flex-col items-center justify-center p-8 overflow-auto bg-slate-200">
-        <input
-          type="text"
-          value={documentTitle}
-          onChange={(e) => setDocumentTitle(e.target.value)}
-          className="text-2xl font-bold text-slate-700 bg-transparent border-b-2 border-transparent focus:border-slate-400 focus:outline-none text-center w-full max-w-lg mb-6 transition-colors"
-          aria-label="Título del Documento"
-          placeholder="Escribe un título para tu documento"
-        />
-        <Canvas
-          elements={elements}
-          pageSettings={pageSettings}
-          selectedElementId={selectedElementId}
-          onSelectElement={setSelectedElementId}
-          onUpdateElement={updateElement}
-        />
+      <main 
+        ref={mainRef}
+        className="flex-1 overflow-auto bg-slate-200 relative cursor-grab"
+        onMouseDown={handleMouseDownForPan}
+      >
+        <div className="w-full min-h-full grid place-items-center p-8">
+          <div>
+            <input
+              type="text"
+              value={documentTitle}
+              onChange={(e) => setDocumentTitle(e.target.value)}
+              className="text-2xl font-bold text-slate-700 bg-transparent border-b-2 border-transparent focus:border-slate-400 focus:outline-none text-center w-full max-w-lg mb-6 transition-colors"
+              aria-label="Título del Documento"
+              placeholder="Escribe un título para tu documento"
+            />
+            <Canvas
+              elements={elements}
+              pageSettings={pageSettings}
+              selectedElementId={selectedElementId}
+              onSelectElement={setSelectedElementId}
+              onUpdateElement={updateElement}
+              zoom={zoom}
+            />
+          </div>
+        </div>
+        <div className="absolute bottom-4 right-4 z-10 bg-white shadow-lg rounded-lg flex items-center border border-slate-300">
+            <button
+                onClick={handleZoomOut}
+                className="p-2 text-slate-600 hover:bg-slate-100 rounded-l-md transition-colors"
+                title="Alejar"
+                aria-label="Alejar"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+            <button 
+                onClick={handleZoomReset} 
+                className="px-3 py-2 text-sm text-slate-700 font-medium hover:bg-slate-100 border-x border-slate-300 transition-colors"
+                title="Restablecer zoom"
+            >
+                {Math.round(zoom * 100)}%
+            </button>
+            <button
+                onClick={handleZoomIn}
+                className="p-2 text-slate-600 hover:bg-slate-100 rounded-r-md transition-colors"
+                title="Acercar"
+                aria-label="Acercar"
+            >
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+            </button>
+        </div>
       </main>
       <PropertiesPanel
         element={selectedElement}

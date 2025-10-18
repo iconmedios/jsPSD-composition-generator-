@@ -1,4 +1,4 @@
-import React, { useRef, useState, useCallback, useEffect } from 'react';
+import React, { useRef, useState, useCallback, useEffect, useMemo } from 'react';
 import type { PdfElement, PageSettings } from '../types';
 import { PAGE_DIMENSIONS, DPI } from '../constants';
 
@@ -8,6 +8,7 @@ interface CanvasProps {
   selectedElementId: string | null;
   onSelectElement: (id: string | null) => void;
   onUpdateElement: (id: string, updates: Partial<PdfElement>) => void;
+  zoom: number;
 }
 
 const unitToPx = (value: number, unit: 'mm' | 'pt' | 'in'): number => {
@@ -22,17 +23,22 @@ const pxToUnit = (value: number, unit: 'mm' | 'pt' | 'in'): number => {
   return value / DPI;
 };
 
-export const Canvas: React.FC<CanvasProps> = ({ elements, pageSettings, selectedElementId, onSelectElement, onUpdateElement }) => {
+export const Canvas: React.FC<CanvasProps> = ({ elements, pageSettings, selectedElementId, onSelectElement, onUpdateElement, zoom }) => {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [draggedElement, setDraggedElement] = useState<{ id: string; offsetX: number; offsetY: number } | null>(null);
   const [resizedElement, setResizedElement] = useState<{ id: string; handle: string, startX: number, startY: number, startW: number, startH: number } | null>(null);
 
   const { format, orientation, units } = pageSettings;
-  const pageDims = PAGE_DIMENSIONS[format];
-  const pageWidth = orientation === 'p' ? pageDims.width[units] : pageDims.height[units];
-  const pageHeight = orientation === 'p' ? pageDims.height[units] : pageDims.width[units];
-  const pageWidthPx = unitToPx(pageWidth, units);
-  const pageHeightPx = unitToPx(pageHeight, units);
+  
+  const [pageWidthInUnits, pageHeightInUnits] = useMemo(() => {
+    const width = PAGE_DIMENSIONS[format].width[units];
+    const height = PAGE_DIMENSIONS[format].height[units];
+    return orientation === 'p' ? [width, height] : [height, width];
+  }, [format, orientation, units]);
+
+  const pageWidthPx = unitToPx(pageWidthInUnits, units);
+  const pageHeightPx = unitToPx(pageHeightInUnits, units);
+
 
   const handleMouseDown = useCallback((e: React.MouseEvent<HTMLDivElement>, id: string) => {
     e.stopPropagation();
@@ -68,15 +74,25 @@ export const Canvas: React.FC<CanvasProps> = ({ elements, pageSettings, selected
     const canvasRect = canvasRef.current.getBoundingClientRect();
 
     if (draggedElement) {
-      const x = e.clientX - canvasRect.left - draggedElement.offsetX;
-      const y = e.clientY - canvasRect.top - draggedElement.offsetY;
-      onUpdateElement(draggedElement.id, {
-        x: pxToUnit(x, units),
-        y: pxToUnit(y, units),
-      });
+        const mouseXInScaledCanvas = e.clientX - canvasRect.left;
+        const mouseYInScaledCanvas = e.clientY - canvasRect.top;
+
+        const mouseXInUnscaledCanvas = mouseXInScaledCanvas / zoom;
+        const mouseYInUnscaledCanvas = mouseYInScaledCanvas / zoom;
+
+        const offsetXInUnscaledCanvas = draggedElement.offsetX / zoom;
+        const offsetYInUnscaledCanvas = draggedElement.offsetY / zoom;
+
+        const newX = mouseXInUnscaledCanvas - offsetXInUnscaledCanvas;
+        const newY = mouseYInUnscaledCanvas - offsetYInUnscaledCanvas;
+
+        onUpdateElement(draggedElement.id, {
+            x: pxToUnit(newX, units),
+            y: pxToUnit(newY, units),
+        });
     } else if (resizedElement) {
-      const dx = e.clientX - resizedElement.startX;
-      const dy = e.clientY - resizedElement.startY;
+      const dx = (e.clientX - resizedElement.startX) / zoom;
+      const dy = (e.clientY - resizedElement.startY) / zoom;
       
       let newWidth = resizedElement.startW;
       let newHeight = resizedElement.startH;
@@ -91,7 +107,7 @@ export const Canvas: React.FC<CanvasProps> = ({ elements, pageSettings, selected
         height: pxToUnit(Math.max(10, newHeight), units),
       });
     }
-  }, [draggedElement, resizedElement, onUpdateElement, units]);
+  }, [draggedElement, resizedElement, onUpdateElement, units, zoom]);
 
   const handleMouseUp = useCallback(() => {
     setDraggedElement(null);
@@ -183,7 +199,12 @@ export const Canvas: React.FC<CanvasProps> = ({ elements, pageSettings, selected
     <div
       ref={canvasRef}
       className="canvas-bg shadow-lg relative"
-      style={{ width: `${pageWidthPx}px`, height: `${pageHeightPx}px` }}
+      style={{
+        width: `${pageWidthPx}px`,
+        height: `${pageHeightPx}px`,
+        transform: `scale(${zoom})`,
+        transformOrigin: 'top left'
+      }}
       onClick={() => onSelectElement(null)}
     >
       {elements.map(renderElement)}
