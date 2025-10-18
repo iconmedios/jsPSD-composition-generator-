@@ -1,0 +1,46 @@
+
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Compositor Visual para jsPDF</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- jsPDF core library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <!-- jspdf-autotable plugin -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+    <style>
+      /* Estilo para el fondo del canvas para que parezca papel */
+      .canvas-bg {
+        background-color: #fff;
+        background-image:
+          linear-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+        background-size: 20px 20px;
+      }
+      .resize-handle {
+        position: absolute;
+        width: 10px;
+        height: 10px;
+        background-color: #3b82f6;
+        border: 1px solid #fff;
+        border-radius: 50%;
+        z-index: 30;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0"
+  }
+}
+</script>
+</head>
+  <body class="bg-slate-100">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>

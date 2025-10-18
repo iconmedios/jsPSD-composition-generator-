@@ -1,0 +1,5 @@
+{
+  "name": "Compositor Visual para jsPDF",
+  "description": "Una aplicación web para diseñar visualmente documentos PDF. Permite a los usuarios arrastrar y soltar elementos como texto, imágenes y tablas, personalizar sus propiedades y generar el código jsPDF correspondiente para recrear el diseño.",
+  "requestFramePermissions": []
+}
