@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { Toolbar } from './components/Toolbar';
 import { Canvas } from './components/Canvas';
 import { PropertiesPanel } from './components/PropertiesPanel';
@@ -16,12 +16,20 @@ const App: React.FC = () => {
     format: 'a4',
     orientation: 'p',
     units: 'mm',
+    marginTop: 10,
+    marginRight: 10,
+    marginBottom: 10,
+    marginLeft: 10,
   });
-  const [elements, setElements] = useState<PdfElement[]>([]);
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [isCodeModalOpen, setCodeModalOpen] = useState(false);
   const [documentTitle, setDocumentTitle] = useState<string>('Mi Documento PDF');
   const [zoom, setZoom] = useState<number>(1);
+  const [clipboard, setClipboard] = useState<PdfElement | null>(null);
+
+  const [history, setHistory] = useState<PdfElement[][]>([[]]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+  const elements = history[historyIndex];
 
   const mainRef = useRef<HTMLElement>(null);
   const panStart = useRef<{x: number, y: number, scrollLeft: number, scrollTop: number} | null>(null);
@@ -31,11 +39,27 @@ const App: React.FC = () => {
     [elements, selectedElementId]
   );
 
+  const setElements = (newElementsOrUpdater: React.SetStateAction<PdfElement[]>) => {
+    const currentElements = history[historyIndex];
+    const newElements = typeof newElementsOrUpdater === 'function' 
+      ? (newElementsOrUpdater as (prevState: PdfElement[]) => PdfElement[])(currentElements)
+      : newElementsOrUpdater;
+
+    if (JSON.stringify(newElements) === JSON.stringify(currentElements)) {
+      return;
+    }
+
+    const newHistory = history.slice(0, historyIndex + 1);
+    newHistory.push(newElements);
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
+  };
+
   const updateElement = useCallback((id: string, updates: Partial<PdfElement>) => {
-    setElements((prevElements) =>
+    setElements(prevElements =>
       prevElements.map((el) => (el.id === id ? { ...el, ...updates } as PdfElement : el))
     );
-  }, []);
+  }, [history, historyIndex]);
 
   const addElement = (type: ElementType) => {
     let newElement: PdfElement;
@@ -97,7 +121,57 @@ const App: React.FC = () => {
   const deleteElement = useCallback((id: string) => {
     setElements((prev) => prev.filter((el) => el.id !== id));
     setSelectedElementId(null);
-  }, []);
+  }, [history, historyIndex]);
+  
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (selectedElementId && (e.key === 'Delete' || e.key === 'Backspace')) {
+        const activeEl = document.activeElement as HTMLElement;
+        if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+          return; // No eliminar si el usuario está escribiendo en un input
+        }
+        e.preventDefault();
+        deleteElement(selectedElementId);
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [selectedElementId, deleteElement]);
+
+  const handleUndo = useCallback(() => {
+    if (historyIndex > 0) {
+      setHistoryIndex(historyIndex - 1);
+      setSelectedElementId(null);
+    }
+  }, [historyIndex]);
+
+  const handleRedo = useCallback(() => {
+    if (historyIndex < history.length - 1) {
+      setHistoryIndex(historyIndex + 1);
+      setSelectedElementId(null);
+    }
+  }, [history, historyIndex]);
+
+  const handleCopy = useCallback(() => {
+    if (selectedElement) {
+      setClipboard(selectedElement);
+    }
+  }, [selectedElement]);
+
+  const handlePaste = useCallback(() => {
+    if (clipboard) {
+      const newElement: PdfElement = {
+        ...clipboard,
+        id: `${clipboard.type}-${Date.now()}`,
+        x: clipboard.x + 10,
+        y: clipboard.y + 10,
+      };
+      setElements(prev => [...prev, newElement]);
+      setSelectedElementId(newElement.id);
+    }
+  }, [clipboard, history, historyIndex]);
 
   const handleGenerateCode = () => {
     setCodeModalOpen(true);
@@ -126,7 +200,7 @@ const App: React.FC = () => {
   const handleZoomReset = () => setZoom(1);
 
   const handleMouseDownForPan = (e: React.MouseEvent) => {
-    if (e.button !== 0 || !mainRef.current || (e.target as HTMLElement).closest('.canvas-bg')) {
+    if (e.button !== 0 || !mainRef.current || (e.target as HTMLElement).closest('.resize-handle')) {
       return;
     }
     panStart.current = {
@@ -164,6 +238,14 @@ const App: React.FC = () => {
         setPageSettings={setPageSettings}
         onGenerateCode={handleGenerateCode}
         onDownloadPdf={handleDownloadPdf}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={historyIndex > 0}
+        canRedo={historyIndex < history.length - 1}
+        onCopy={handleCopy}
+        onPaste={handlePaste}
+        canCopy={!!selectedElementId}
+        canPaste={!!clipboard}
       />
       <main 
         ref={mainRef}
@@ -220,6 +302,7 @@ const App: React.FC = () => {
         element={selectedElement}
         onUpdateElement={updateElement}
         onDeleteElement={deleteElement}
+        pageSettings={pageSettings}
       />
       {isCodeModalOpen && (
         <CodeModal

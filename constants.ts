@@ -80,3 +80,31 @@ export const TrashIcon: React.FC<{className?: string}> = ({className}) => (
       React.createElement('line', {x1:"14", x2:"14", y1:"11", y2:"17"}),
     )
 );
+
+export const UndoIcon: React.FC<{className?: string}> = ({className}) => (
+    React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", width:"24", height:"24", viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:"2", strokeLinecap:"round", strokeLinejoin:"round", className},
+      React.createElement('path', {d:"M3 7v6h6"}),
+      React.createElement('path', {d:"M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"}),
+    )
+);
+
+export const RedoIcon: React.FC<{className?: string}> = ({className}) => (
+    React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", width:"24", height:"24", viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:"2", strokeLinecap:"round", strokeLinejoin:"round", className},
+      React.createElement('path', {d:"M21 7v6h-6"}),
+      React.createElement('path', {d:"M3 17a9 9 0 0 0 9 9 9 9 0 0 0 6-2.3L21 13"}),
+    )
+);
+
+export const CopyIcon: React.FC<{className?: string}> = ({className}) => (
+    React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", width:"24", height:"24", viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:"2", strokeLinecap:"round", strokeLinejoin:"round", className},
+      React.createElement('rect', {width:"14", height:"14", x:"8", y:"8", rx:"2", ry:"2"}),
+      React.createElement('path', {d:"M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"}),
+    )
+);
+
+export const PasteIcon: React.FC<{className?: string}> = ({className}) => (
+    React.createElement('svg', {xmlns:"http://www.w3.org/2000/svg", width:"24", height:"24", viewBox:"0 0 24 24", fill:"none", stroke:"currentColor", strokeWidth:"2", strokeLinecap:"round", strokeLinejoin:"round", className},
+        React.createElement('rect', {width: "8", height: "4", x: "8", y: "2", rx: "1", ry: "1"}),
+        React.createElement('path', {d: "M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"}),
+    )
+);

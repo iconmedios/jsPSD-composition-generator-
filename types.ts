@@ -7,6 +7,10 @@ export interface PageSettings {
   format: PageFormat;
   orientation: PageOrientation;
   units: Unit;
+  marginTop: number;
+  marginRight: number;
+  marginBottom: number;
+  marginLeft: number;
 }
 
 export interface ElementBase {

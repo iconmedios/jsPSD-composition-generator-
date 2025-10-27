@@ -1,11 +1,12 @@
-import React from 'react';
-import type { PdfElement, TextElement, ImageElement, ShapeElement, TableElement } from '../types';
-import { TrashIcon } from '../constants';
+import React, { useMemo } from 'react';
+import type { PdfElement, TextElement, ImageElement, ShapeElement, TableElement, PageSettings } from '../types';
+import { TrashIcon, PAGE_DIMENSIONS } from '../constants';
 
 interface PropertiesPanelProps {
   element: PdfElement | null;
   onUpdateElement: (id: string, updates: Partial<PdfElement>) => void;
   onDeleteElement: (id: string) => void;
+  pageSettings: PageSettings;
 }
 
 const PropInput: React.FC<{ label: string; name: string; value: any; onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void; type?: string; step?: number; min?: number; }> =
@@ -18,7 +19,36 @@ const PropInput: React.FC<{ label: string; name: string; value: any; onChange: (
       />
     </div>
   );
-  
+
+const PropSlider: React.FC<{ label: string; name: string; value: number; onChange: (e: React.ChangeEvent<HTMLInputElement>) => void; max: number; }> =
+  ({ label, name, value, onChange, max }) => (
+    <div>
+      <label className="block text-xs font-medium text-slate-600 mb-1">{label}</label>
+      <div className="flex items-center space-x-2">
+        <input
+          type="range"
+          name={name}
+          value={value}
+          onChange={onChange}
+          max={max}
+          min={0}
+          step={1}
+          className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+        />
+        <input
+          type="number"
+          name={name}
+          value={value}
+          onChange={onChange}
+          max={max}
+          min={0}
+          step={1}
+          className="w-20 p-2 border border-slate-300 rounded-md text-sm"
+        />
+      </div>
+    </div>
+  );
+
 const PropTextArea: React.FC<{ label: string; name: string; value: string; onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void; rows?: number; }> =
   ({ label, ...props }) => (
     <div>
@@ -30,7 +60,15 @@ const PropTextArea: React.FC<{ label: string; name: string; value: string; onCha
     </div>
   );
 
-export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ element, onUpdateElement, onDeleteElement }) => {
+export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ element, onUpdateElement, onDeleteElement, pageSettings }) => {
+  const { format, orientation, units } = pageSettings;
+
+  const [pageWidthInUnits, pageHeightInUnits] = useMemo(() => {
+    const width = PAGE_DIMENSIONS[format].width[units];
+    const height = PAGE_DIMENSIONS[format].height[units];
+    return orientation === 'p' ? [width, height] : [height, width];
+  }, [format, orientation, units]);
+
   if (!element) {
     return (
       <aside className="w-72 bg-white p-4 border-l border-slate-200 overflow-y-auto">
@@ -46,7 +84,7 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ element, onUpd
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
     const isNumeric = ['x', 'y', 'width', 'height', 'fontSize'].includes(name);
-    onUpdateElement(element.id, { [name]: isNumeric ? parseFloat(value) : value });
+    onUpdateElement(element.id, { [name]: isNumeric ? parseInt(value, 10) || 0 : value });
   };
   
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -121,10 +159,10 @@ export const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ element, onUpd
         </button>
       </div>
       <div className="space-y-4">
-        <PropInput label="X" name="x" value={element.x.toFixed(2)} onChange={handleChange} type="number" step={0.1} />
-        <PropInput label="Y" name="y" value={element.y.toFixed(2)} onChange={handleChange} type="number" step={0.1} />
-        <PropInput label="Ancho" name="width" value={element.width.toFixed(2)} onChange={handleChange} type="number" step={0.1} min={1}/>
-        <PropInput label="Alto" name="height" value={element.height.toFixed(2)} onChange={handleChange} type="number" step={0.1} min={1}/>
+        <PropSlider label="X" name="x" value={Math.round(element.x)} onChange={handleChange} max={Math.round(pageWidthInUnits)} />
+        <PropSlider label="Y" name="y" value={Math.round(element.y)} onChange={handleChange} max={Math.round(pageHeightInUnits)} />
+        <PropInput label="Ancho" name="width" value={Math.round(element.width)} onChange={handleChange} type="number" step={1} min={1}/>
+        <PropInput label="Alto" name="height" value={Math.round(element.height)} onChange={handleChange} type="number" step={1} min={1}/>
 
         <hr/>
 

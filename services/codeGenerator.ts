@@ -45,8 +45,15 @@ export const generateJsPdfCode = (
   elements: PdfElement[],
   isForDisplay: boolean
 ): string => {
-  const { orientation, units, format } = pageSettings;
-  let code = `const doc = new jspdf.jsPDF({
+  const { orientation, units, format, marginTop, marginRight, marginBottom, marginLeft } = pageSettings;
+  let code = `/**
+ * Márgenes configurados (en ${units}):
+ * Superior: ${marginTop}
+ * Derecho: ${marginRight}
+ * Inferior: ${marginBottom}
+ * Izquierdo: ${marginLeft}
+ */
+const doc = new jspdf.jsPDF({
   orientation: '${orientation}',
   unit: '${units}',
   format: '${format}'

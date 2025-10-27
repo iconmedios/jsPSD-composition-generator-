@@ -1,7 +1,6 @@
-
 import React from 'react';
 import type { ElementType, PageSettings } from '../types';
-import { TextIcon, ImageIcon, SquareIcon, TableIcon, CodeIcon, DownloadIcon } from '../constants';
+import { TextIcon, ImageIcon, SquareIcon, TableIcon, CodeIcon, DownloadIcon, UndoIcon, RedoIcon, CopyIcon, PasteIcon } from '../constants';
 
 interface ToolbarProps {
   onAddElement: (type: ElementType) => void;
@@ -9,6 +8,14 @@ interface ToolbarProps {
   setPageSettings: React.Dispatch<React.SetStateAction<PageSettings>>;
   onGenerateCode: () => void;
   onDownloadPdf: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onCopy: () => void;
+  onPaste: () => void;
+  canCopy: boolean;
+  canPaste: boolean;
 }
 
 const ToolButton: React.FC<{ onClick: () => void; children: React.ReactNode, title: string }> = ({ onClick, children, title }) => (
@@ -21,16 +28,36 @@ const ToolButton: React.FC<{ onClick: () => void; children: React.ReactNode, tit
   </button>
 );
 
-export const Toolbar: React.FC<ToolbarProps> = ({ onAddElement, pageSettings, setPageSettings, onGenerateCode, onDownloadPdf }) => {
-  const handleSettingChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+export const Toolbar: React.FC<ToolbarProps> = ({ 
+  onAddElement, pageSettings, setPageSettings, onGenerateCode, onDownloadPdf, 
+  onUndo, onRedo, canUndo, canRedo,
+  onCopy, onPaste, canCopy, canPaste
+}) => {
+  const handleSettingChange = (e: React.ChangeEvent<HTMLSelectElement | HTMLInputElement>) => {
     const { name, value } = e.target;
-    setPageSettings(prev => ({ ...prev, [name]: value }));
+    const isMargin = name.toLowerCase().includes('margin');
+    setPageSettings(prev => ({ ...prev, [name]: isMargin ? parseInt(value, 10) || 0 : value }));
   };
 
   return (
-    <aside className="w-64 bg-white p-4 border-r border-slate-200 flex flex-col">
+    <aside className="w-64 bg-white p-4 border-r border-slate-200 flex flex-col overflow-y-auto">
       <h1 className="text-xl font-bold text-slate-800 mb-6">Compositor PDF</h1>
       
+      <div className="flex items-center justify-start space-x-2 mb-4 px-2">
+        <button onClick={onUndo} disabled={!canUndo} title="Deshacer" className="p-2 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 hover:bg-slate-200 rounded-md transition-colors">
+            <UndoIcon className="w-5 h-5" />
+        </button>
+        <button onClick={onRedo} disabled={!canRedo} title="Rehacer" className="p-2 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 hover:bg-slate-200 rounded-md transition-colors">
+            <RedoIcon className="w-5 h-5" />
+        </button>
+        <button onClick={onCopy} disabled={!canCopy} title="Copiar" className="p-2 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 hover:bg-slate-200 rounded-md transition-colors">
+            <CopyIcon className="w-5 h-5" />
+        </button>
+        <button onClick={onPaste} disabled={!canPaste} title="Pegar" className="p-2 disabled:opacity-50 disabled:cursor-not-allowed text-slate-700 hover:bg-slate-200 rounded-md transition-colors">
+            <PasteIcon className="w-5 h-5" />
+        </button>
+      </div>
+
       <div className="space-y-2 mb-6">
         <h2 className="text-sm font-semibold text-slate-500 px-3">Añadir Elemento</h2>
         <ToolButton onClick={() => onAddElement('text')} title="Añadir Texto">
@@ -71,6 +98,27 @@ export const Toolbar: React.FC<ToolbarProps> = ({ onAddElement, pageSettings, se
             <option value="pt">Puntos (pt)</option>
             <option value="in">Pulgadas (in)</option>
           </select>
+        </div>
+        <div className='px-3'>
+            <label className="block text-xs font-medium text-slate-600 mb-2">Márgenes ({pageSettings.units})</label>
+            <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                 <div>
+                    <label className="block text-xs text-slate-500 mb-1">Superior</label>
+                    <input type="number" name="marginTop" value={pageSettings.marginTop} onChange={handleSettingChange} className="w-full p-2 border border-slate-300 rounded-md text-sm"/>
+                </div>
+                <div>
+                    <label className="block text-xs text-slate-500 mb-1">Inferior</label>
+                    <input type="number" name="marginBottom" value={pageSettings.marginBottom} onChange={handleSettingChange} className="w-full p-2 border border-slate-300 rounded-md text-sm"/>
+                </div>
+                 <div>
+                    <label className="block text-xs text-slate-500 mb-1">Izquierdo</label>
+                    <input type="number" name="marginLeft" value={pageSettings.marginLeft} onChange={handleSettingChange} className="w-full p-2 border border-slate-300 rounded-md text-sm"/>
+                </div>
+                 <div>
+                    <label className="block text-xs text-slate-500 mb-1">Derecho</label>
+                    <input type="number" name="marginRight" value={pageSettings.marginRight} onChange={handleSettingChange} className="w-full p-2 border border-slate-300 rounded-md text-sm"/>
+                </div>
+            </div>
         </div>
       </div>
       

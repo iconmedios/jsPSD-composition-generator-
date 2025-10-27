@@ -87,8 +87,8 @@ export const Canvas: React.FC<CanvasProps> = ({ elements, pageSettings, selected
         const newY = mouseYInUnscaledCanvas - offsetYInUnscaledCanvas;
 
         onUpdateElement(draggedElement.id, {
-            x: pxToUnit(newX, units),
-            y: pxToUnit(newY, units),
+            x: Math.round(pxToUnit(newX, units)),
+            y: Math.round(pxToUnit(newY, units)),
         });
     } else if (resizedElement) {
       const dx = (e.clientX - resizedElement.startX) / zoom;
@@ -103,8 +103,8 @@ export const Canvas: React.FC<CanvasProps> = ({ elements, pageSettings, selected
       if (resizedElement.handle.includes('t')) newHeight -= dy;
 
       onUpdateElement(resizedElement.id, {
-        width: pxToUnit(Math.max(10, newWidth), units),
-        height: pxToUnit(Math.max(10, newHeight), units),
+        width: Math.round(pxToUnit(Math.max(10, newWidth), units)),
+        height: Math.round(pxToUnit(Math.max(10, newHeight), units)),
       });
     }
   }, [draggedElement, resizedElement, onUpdateElement, units, zoom]);
@@ -194,6 +194,11 @@ export const Canvas: React.FC<CanvasProps> = ({ elements, pageSettings, selected
       </div>
     );
   };
+  
+  const marginTopPx = unitToPx(pageSettings.marginTop, units);
+  const marginRightPx = unitToPx(pageSettings.marginRight, units);
+  const marginBottomPx = unitToPx(pageSettings.marginBottom, units);
+  const marginLeftPx = unitToPx(pageSettings.marginLeft, units);
 
   return (
     <div
@@ -207,7 +212,14 @@ export const Canvas: React.FC<CanvasProps> = ({ elements, pageSettings, selected
       }}
       onClick={() => onSelectElement(null)}
     >
-      {elements.map(renderElement)}
+        <>
+            {/* Guías de margen */}
+            <div style={{ position: 'absolute', top: marginTopPx, left: marginLeftPx, right: marginRightPx, borderTop: '1px dashed rgba(0, 0, 0, 0.4)', zIndex: 0 }} />
+            <div style={{ position: 'absolute', bottom: marginBottomPx, left: marginLeftPx, right: marginRightPx, borderBottom: '1px dashed rgba(0, 0, 0, 0.4)', zIndex: 0 }} />
+            <div style={{ position: 'absolute', left: marginLeftPx, top: marginTopPx, bottom: marginBottomPx, borderLeft: '1px dashed rgba(0, 0, 0, 0.4)', zIndex: 0 }} />
+            <div style={{ position: 'absolute', right: marginRightPx, top: marginTopPx, bottom: marginBottomPx, borderRight: '1px dashed rgba(0, 0, 0, 0.4)', zIndex: 0 }} />
+            {elements.map(renderElement)}
+        </>
     </div>
   );
 };
